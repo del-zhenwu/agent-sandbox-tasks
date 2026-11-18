@@ -1,16 +1,17 @@
 import hashlib
 import json
-import os
 import sys
 from pathlib import Path
-APP = Path(os.environ.get("APP_ROOT", "/app"))
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "output"
+OUT.mkdir(parents=True, exist_ok=True)
+SIZE = 1024 * 1024 * 1024
 BLOCK = bytes(i % 251 for i in range(64 * 1024))
 
 def main():
-    size = int(os.environ.get("BENCH_STDOUT_BYTES", str(1024 * 1024 * 1024)))
     digest = hashlib.sha256()
     out = sys.stdout.buffer
-    full, rem = divmod(size, len(BLOCK))
+    full, rem = divmod(SIZE, len(BLOCK))
     for _ in range(full):
         out.write(BLOCK)
         digest.update(BLOCK)
@@ -19,8 +20,8 @@ def main():
         out.write(tail)
         digest.update(tail)
     out.flush()
-    (APP / "stdout_receipt.json").write_text(json.dumps({
-        "bytes": size,
+    (OUT / "stdout_receipt.json").write_text(json.dumps({
+        "bytes": SIZE,
         "sha256": digest.hexdigest(),
     }))
 

@@ -1,7 +1,20 @@
-Use the Python already installed in this environment. Do not modify `/app/probe.py`.
+# sb-stdout
 
-Run `python3 /app/probe.py` once and keep its entire standard output. The output is exactly 1073741824 bytes: one 65536-byte block repeated, where byte `i` of the block is `i % 251`. The same command writes `/app/stdout_receipt.json`.
+工作目录是包含 `inputs/` 的文件夹。
 
-The saved output must be exactly 1073741824 bytes, and its SHA-256 must equal the `sha256` field in `/app/stdout_receipt.json`.
+## Inputs
 
-You have 1800 seconds to complete this task. Do not cheat by using online solutions or hints specific to this task.
+- `inputs/probe.py`
+
+不得修改 `inputs/`。
+
+## 操作
+
+```bash
+python3 inputs/probe.py > output/captured_stdout.bin
+```
+
+## 结果文件
+
+1. `output/captured_stdout.bin`
+2. `output/stdout_receipt.json`

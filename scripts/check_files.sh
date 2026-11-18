@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 if [ "$#" -ne 2 ]; then
-  echo "用法: bash scripts/check_files.sh tasks/sb-tool-calls /你拷出来的目录"
+  echo "用法: bash scripts/check_files.sh tasks/sb-tool-calls /含有output的目录"
   exit 1
 fi
 task=$(cd "$1" && pwd)

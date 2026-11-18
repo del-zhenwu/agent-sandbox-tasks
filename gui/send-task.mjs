@@ -6,7 +6,7 @@ import readline from "node:readline";
 const taskDir = path.resolve(process.argv[2] || "");
 const configPath = path.resolve(process.argv[3] || "gui/config.json");
 const instructionPath = path.join(taskDir, "instruction.md");
-const probePath = path.join(taskDir, "probe.py");
+const probePath = path.join(taskDir, "inputs", "probe.py");
 
 if (!fs.existsSync(instructionPath)) {
   console.error("用法: node gui/send-task.mjs tasks/sb-tool-calls");
@@ -20,7 +20,7 @@ if (!fs.existsSync(configPath)) {
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 const instruction = fs.readFileSync(instructionPath, "utf8");
 const taskName = path.basename(taskDir);
-const runDir = path.resolve("runs", taskName);
+const runDir = path.resolve("runs", taskName, "output");
 fs.mkdirSync(runDir, { recursive: true });
 
 const browser = await chromium.launch({ headless: false });
@@ -57,6 +57,7 @@ const timing = {
   ended_at: endedAt.toISOString(),
   elapsed_seconds: (endedAt - startedAt) / 1000,
 };
-fs.writeFileSync(path.join(runDir, "timing.json"), JSON.stringify(timing, null, 2) + "\n");
-console.log(`用时 ${timing.elapsed_seconds.toFixed(1)} 秒，写在 ${path.join(runDir, "timing.json")}`);
+const timingPath = path.join(runDir, "timing.json");
+fs.writeFileSync(timingPath, JSON.stringify(timing, null, 2) + "\n");
+console.log(`用时 ${timing.elapsed_seconds.toFixed(1)} 秒。把 ${timingPath} 放进这一题的 output/，和产物放在一起，再交给核对的模型。`);
 await browser.close();

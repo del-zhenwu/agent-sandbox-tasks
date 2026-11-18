@@ -1,31 +1,61 @@
 # sandbox-bench-tasks
 
-这一支默认用图形界面。不建镜像，也不在命令行里启动 agent。
+目的：通过同一个图形界面 coding agent 发题，牵引 **agent** 和 **内部沙箱** 迭代，并和 Codex 等对比。
 
-打开 agent 的窗口，把题目说明贴进去，把 `probe.py` 放进它的工作区，点发送。从点发送记到它做完。两家差不到 1 分钟，不比谁快。
+正式套件只量工具调用和文件读写（含并发执行、标准输出），不量通用解题，也不拿公网带宽题做对比。
 
-也可以让 Playwright 替你打开同一个窗口、贴上题目并点发送。它不会自己判断做完没有。你看着界面，做完后回到终端按回车，它把用时写到 `runs/<题目>/timing.json`。
+对错看 `output/`，用 `tests/` 做确定性检查。通过之后才比 `timing.json` 的秒数。相差不到 60 秒，不判断谁更快。聊天文字不算结果。计时范围内不要插手下载或改文件。
+
+## 目录
 
 ```text
 tasks/<名字>/
-├── instruction.md    # 贴进输入框的说明
-├── probe.py          # 放进 agent 工作区的 /app/probe.py
-├── task.toml         # 做完后要拿回来的文件
+├── instruction.md     # 贴进输入框
+├── inputs/            # 拖给 agent
+├── output/            # 产物；发题人写入 timing.json
+├── judge.md           # 这题失败时通常暴露什么
 └── tests/test_outputs.py
 ```
 
-## 人来做
+## 怎么跑
 
-1. 打开 agent 的图形界面。
-2. 把 `tasks/<名字>/probe.py` 放到它能读到的 `/app/probe.py`。
-3. 把 `instruction.md` 全文贴进输入框，点发送，同时开始记时间。
-4. 它做完后停止记时。`sb-cold-start` 要新建 60 次，每次都是新的工作区，做完就关掉，60 次时间相加。
-5. 按 `task.toml` 里的 `artifacts` 把文件拷出来。
-6. 核对内容：`bash scripts/check_files.sh tasks/<名字> /拷出来的目录`。这一步只看文件，不会去打开 agent。
+1. 只把 `tasks/<名字>/inputs` 放进 agent 工作区。不要拖整个 `tasks/<名字>/`，里面的 `tests/`、`judge.md`、`instruction.md` 不能让 agent 看见。
+2. 把 `instruction.md` 全文贴进输入框（不要把该文件放进工作区），点发送并开始计时。
+3. 题目要求的文件都齐了就停表，写入 `output/timing.json`：`started_at`、`ended_at`、`elapsed_seconds`
+4. `bash scripts/check_files.sh tasks/<名字> /含有output的目录`
+5. 失败 → 按 `judge.md` 看更像 agent 问题还是沙箱问题；通过 → 才拿秒数和 Codex 对比
 
-## 用 Playwright 发题
 
-复制 `gui/config.example.json` 为 `gui/config.json`，填上界面地址、输入框、发送按钮。能传文件的话，再填文件选择框，脚本会带上 `probe.py`。
+发题注意：工作区里只能有 `inputs/`。`tests/`、`judge.md`、仓库里的 `instruction.md` 文件本身都不要放进工作区；题目文字只粘贴进输入框。
+
+`sb-tool-calls` / `sb-fs-small` 若被合成一条循环命令，产物仍可能通过 tests，但用时会偏短，对比时要结合调用记录看。`sb-concurrent-exec` 用 `elapsed_seconds ≤ 90` 抓没有重叠的情况。
+
+## 正式套件
+
+| 目录 | 量什么 | 失败时通常说明什么 |
+|---|---|---|
+| `sb-tool-calls` | 1000 次独立工具调用 | 调用次数不够，或单次调用往返太慢 |
+| `sb-concurrent-exec` | 80 条重叠执行（各等 5 秒） | 没重叠：`elapsed_seconds` > 90（agent 顺序发，或沙箱串行化 exec） |
+| `sb-fs-small` | 600 个小文件写入 | 丢文件、写坏 |
+| `sb-fs-upload` | 工作区写入约 1 GiB | 大文件写失败、截断 |
+| `sb-fs-download` | 大文件写完后再完整读回 | 没跑读回，或读回内容不一致 |
+| `sb-stdout` | 一次命令保住约 1 GiB 标准输出 | 标准输出被截断 |
+
+以下仍留在目录里，**不在正式套件**，不参与 Codex 用时对比：
+
+- `sb-cold-start`（冷启动）
+- `sb-net-rtt` / `sb-net-download` / `sb-net-upload`（公网 Cloudflare；用户 ISP 带宽会主导用时）
+
+目录名 `sb-fs-upload` / `sb-fs-download` 沿用旧名：这里分别指大文件**写**与**读回**，不是浏览器下载。
+
+## 和 Codex 对比时
+
+- 同一份 `instruction.md`、同一套 `tests/`
+- 只对比 tests 通过的 run
+- 用同一规则写 `timing.json`（点发送 → 文件齐）
+- 先看通过/失败和 `judge.md` 里的归因，再看秒数
+
+## Playwright
 
 ```bash
 npm install
@@ -33,21 +63,6 @@ npx playwright install chromium
 node gui/send-task.mjs tasks/sb-tool-calls
 ```
 
-`doneSelector` 留空。脚本发出去之后会等你按回车，再记下结束时间。
+脚本把用时写到 `runs/<题目>/output/timing.json`。再和产物一起跑 `check_files.sh`。
 
-## 题目
-
-| 目录 | 规模 | 出处 |
-|---|---|---|
-| `sb-tool-calls` | 1000 次单独调用，每次写一行 | [agent-sandbox-benchmark](https://github.com/FrigaZzz/agent-sandbox-benchmark) 的 `session_state`（原为 3 次） |
-| `sb-concurrent-exec` | 80 次一起发出，每次等待 5 秒 | [sandbox-test](https://github.com/nickaggarwal/sandbox-test) 的 Concurrent Exec（原为 4 步，报告 2026-03-22） |
-| `sb-cold-start` | 新建并销毁沙箱 60 次 | 同上 benchmark 的 `cold_start`；[ComputeSDK TTI](https://github.com/computesdk/benchmarks)；[coldtally](https://coldtally.com/startup-times/)（2026-10-22：E2B 252 ms、Modal 484 ms、Daytona 1072 ms） |
-| `sb-fs-small` | 600 个 32 KiB 文件，写入再逐个读回 | sandbox-test 的 Filesystem I/O（原为上传 5 个、下载 9 个） |
-| `sb-fs-upload` | 经文件接口写入 1 GiB | 同上，API 上传原为 10MB（4.1–47.5 秒） |
-| `sb-fs-download` | 经文件接口读回 1 GiB | 同上，API 下载原为 100MB（E2B 8.1 秒，Modal 51.6 秒） |
-| `sb-stdout` | 一次命令输出 1 GiB，由界面收齐 | agent-sandbox-benchmark 的 `output_fidelity`（原为 131072 字节） |
-| `sb-net-rtt` | 沙箱内请求 `https://example.com` 1000 次 | sandbox-test 的 HTTP 延迟（原约 18–61 ms） |
-| `sb-net-download` | 从 Cloudflare `__down` 下载 1 GiB | sandbox-test 的沙箱内下载；[hpc-sandbox-benchmarks](https://github.com/starslingdev/hpc-sandbox-benchmarks) 的 iperf3 下载 |
-| `sb-net-upload` | 向 Cloudflare `__up` 发送 1 GiB | sandbox-test 的沙箱内上传；hpc 的 iperf3 上传 |
-
-带镜像、用命令行跑的那一版在 `master`。
+带 Docker/CLI 的一版在 `master`。

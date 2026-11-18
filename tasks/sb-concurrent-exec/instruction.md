@@ -1,11 +1,23 @@
-Use the Python already installed in this environment. Do not modify `/app/probe.py`.
+# sb-concurrent-exec
 
-Start every command below before any of them finishes. For each integer `i` from 0 through 79, run a separate command:
+工作目录是包含 `inputs/` 的文件夹。
 
+## Inputs
+
+- `inputs/probe.py`
+
+不得修改 `inputs/`。
+
+## 操作
+
+对每个整数 `i`（0 到 79）执行：
+
+```bash
+python3 inputs/probe.py $i
 ```
-python3 /app/probe.py $i
-```
 
-Each command waits 5 seconds, then writes `/app/done/<i>`. That file must contain the index followed by a single newline. `/app/done/0` through `/app/done/79` must all exist.
+这 80 条先全部发出，再等待它们结束。
 
-You have 1800 seconds to complete this task. Do not cheat by using online solutions or hints specific to this task.
+## 结果文件
+
+1. `output/done/0` … `output/done/79`，内容为编号加换行

@@ -1,7 +1,20 @@
-Place `/app/incoming.bin` in the environment before running any command. The file is exactly 1073741824 bytes, made by repeating one 65536-byte block. Byte `i` inside that block is `i % 251`. Do not create this file with a command inside the environment.
+# sb-fs-upload
 
-Then run `python3 /app/probe.py` once. Do not modify `/app/probe.py`.
+工作目录是包含 `inputs/` 的文件夹。
 
-`/app/upload_report.json` must report `"matched": true` and `"bytes": 1073741824`.
+## Inputs
 
-You have 1800 seconds to complete this task. Do not cheat by using online solutions or hints specific to this task.
+- `inputs/probe.py`
+
+不得修改 `inputs/`。
+
+## 操作
+
+```bash
+python3 inputs/probe.py
+```
+
+## 结果文件
+
+1. `output/large.bin`
+2. `output/write_report.json`

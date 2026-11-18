@@ -1,11 +1,3 @@
-Use the Python already installed in this environment. Do not modify `/app/probe.py`.
+# sb-net-rtt（不在正式套件）
 
-Run this command once:
-
-```
-python3 /app/probe.py
-```
-
-That run requests `https://example.com` 1000 times. Every HTTP status must be 200. `/app/rtt_report.json` must contain those 1000 statuses, each equal to 200.
-
-You have 1800 seconds to complete this task. Do not cheat by using online solutions or hints specific to this task.
+公网短请求的用时会被用户当前网络带走，不纳入和 Codex 的对比，也不进入正式失败/用时表。

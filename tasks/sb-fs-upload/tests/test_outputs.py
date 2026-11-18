@@ -1,10 +1,17 @@
+import hashlib
 import json
-import os
 from pathlib import Path
-APP = Path(os.environ.get("APP_ROOT", "/app"))
+import os
+APP = Path(os.environ.get("APP_ROOT", ".")) / "output"
+SIZE = 1024 * 1024 * 1024
 
-def test_upload_report():
-    size = int(os.environ.get("BENCH_FS_UPLOAD_BYTES", str(1024 * 1024 * 1024)))
-    report = json.loads((APP / "upload_report.json").read_text())
-    assert report["matched"] is True
-    assert report["bytes"] == size
+def test_large_write():
+    report = json.loads((APP / "write_report.json").read_text())
+    data = (APP / "large.bin").read_bytes()
+    assert len(data) == SIZE == report["bytes"]
+    assert report["sha256"] == hashlib.sha256(data).hexdigest()
+
+def test_timing_present():
+    report = json.loads((APP / "timing.json").read_text())
+    assert isinstance(report["elapsed_seconds"], (int, float))
+    assert report["elapsed_seconds"] >= 0

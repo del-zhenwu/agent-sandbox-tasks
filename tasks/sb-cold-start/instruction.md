@@ -1,11 +1,3 @@
-Use the Python already installed in this environment. Do not modify `/app/probe.py`.
+# sb-cold-start（不在正式套件）
 
-Run this command once:
-
-```
-python3 /app/probe.py
-```
-
-`/app/ready.txt` must start with `SANDBOX_READY ` and end with a newline.
-
-You have 1800 seconds to complete this task. Do not cheat by using online solutions or hints specific to this task.
+冷启动不纳入和 Codex 的对比，也不进入正式失败/用时表。

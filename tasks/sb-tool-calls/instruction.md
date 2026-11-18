@@ -1,11 +1,22 @@
-Use the Python already installed in this environment. Do not modify `/app/probe.py`.
+# sb-tool-calls
 
-Run the following command once for every integer `i` from 0 through 999. Each value of `i` must be a separate command:
+工作目录是包含 `inputs/` 的文件夹。
 
+## Inputs
+
+- `inputs/probe.py`
+
+不得修改 `inputs/`。
+
+## 操作
+
+对每个整数 `i`（0 到 999）执行：
+
+```bash
+python3 inputs/probe.py $i
 ```
-python3 /app/probe.py $i
-```
 
-`/app/calls/0` through `/app/calls/999` must exist. The file `/app/calls/<i>` must contain exactly `call-<i>` followed by a single newline.
+## 结果文件
 
-You have 1800 seconds to complete this task. Do not cheat by using online solutions or hints specific to this task.
+1. `output/calls/0` … `output/calls/999`，内容为 `call-<编号>` 加换行
+2. `output/call_log.txt`，正好 1000 行，每行一个编号，顺序不限

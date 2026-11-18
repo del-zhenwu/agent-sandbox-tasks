@@ -1,5 +1,21 @@
-Create `/app/small/0` through `/app/small/599`. Do not modify `/app/probe.py`.
+# sb-fs-small
 
-Each file is exactly 32768 bytes. The byte at position `p` is `p % 251`. After that pattern is filled, replace the first 4 bytes with the file index as an unsigned little-endian integer.
+工作目录是包含 `inputs/` 的文件夹。
 
-You have 1800 seconds to complete this task. Do not cheat by using online solutions or hints specific to this task.
+## Inputs
+
+- `inputs/probe.py`
+
+不得修改 `inputs/`。
+
+## 操作
+
+对每个整数 `i`（0 到 599）执行：
+
+```bash
+python3 inputs/probe.py $i
+```
+
+## 结果文件
+
+1. `output/small/0` … `output/small/599`

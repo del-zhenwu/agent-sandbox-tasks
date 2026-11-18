@@ -1,11 +1,26 @@
-Use the Python already installed in this environment. Do not modify `/app/probe.py`.
+# sb-fs-download
 
-Run this command once:
+工作目录是包含 `inputs/` 的文件夹。
 
+## Inputs
+
+- `inputs/write.py`
+- `inputs/read.py`
+
+不得修改 `inputs/`。
+
+## 操作
+
+```bash
+python3 inputs/write.py
 ```
-python3 /app/probe.py
+
+```bash
+python3 inputs/read.py
 ```
 
-It writes `/app/outgoing.bin` and `/app/download_receipt.json`. The file must be exactly 1073741824 bytes, and its SHA-256 must equal the `sha256` field in `/app/download_receipt.json`.
+## 结果文件
 
-You have 1800 seconds to complete this task. Do not cheat by using online solutions or hints specific to this task.
+1. `output/large.bin`
+2. `output/write_report.json`
+3. `output/read_report.json`

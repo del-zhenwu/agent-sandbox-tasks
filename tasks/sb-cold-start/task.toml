@@ -2,7 +2,7 @@
 # 这一支用图形界面发题，不构建镜像。
 # 人打开 agent 窗口，或用 gui/send-task.mjs 把 instruction.md 贴进去。
 schema_version = "1.0"
-artifacts = ["/app/ready.txt"]
+artifacts = ["output/"]
 
 [task]
 name = "sandbox-bench/sb-cold-start"
