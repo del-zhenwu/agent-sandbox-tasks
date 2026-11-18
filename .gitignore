@@ -2,3 +2,6 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .tbench-testing/
+node_modules/
+gui/config.json
+runs/
