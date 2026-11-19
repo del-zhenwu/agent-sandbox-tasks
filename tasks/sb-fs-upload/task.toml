@@ -5,7 +5,7 @@ artifacts = ["output/"]
 
 [task]
 name = "sandbox-bench/sb-fs-upload"
-version = "2.0.0"
+version = "3.1.0"
 description = ""
 authors = [{ name = "sandbox-bench", email = "sandbox-bench@localhost" }]
 
@@ -18,8 +18,13 @@ tags = ["filesystem", "large-write"]
 expert_time_estimate_hours = 0.2
 
 [verifier]
-timeout_sec = 180.0
+timeout_sec = 60.0
 environment_mode = "separate"
 
 [agent]
-timeout_sec = 1800.0
+timeout_sec = 60.0
+
+[environment]
+cpus = 1
+memory_mb = 2048
+storage_mb = 8192

@@ -2,13 +2,15 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "output"
-OUT.mkdir(parents=True, exist_ok=True)
-SIZE = 1024 * 1024 * 1024
+SIZE = 64 * 1024 * 1024
 BLOCK = bytes(i % 251 for i in range(64 * 1024))
 
+
 def main():
+    OUT.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256()
     out = sys.stdout.buffer
     full, rem = divmod(SIZE, len(BLOCK))
@@ -24,6 +26,7 @@ def main():
         "bytes": SIZE,
         "sha256": digest.hexdigest(),
     }))
+
 
 if __name__ == "__main__":
     main()

@@ -1,12 +1,9 @@
 # sb-stdout 核对
 
-暴露问题：
-- 捕获文件偏短 → 工具或沙箱截断了标准输出
-- 没有收据 → 命令没跑完
+期望哈希由平台在私有平面独立计算，agent 看不到。
 
-核对产物：
-- `output/captured_stdout.bin` 正好 1073741824 字节
-- 与 `stdout_receipt.json` 的 sha256 一致
+- `test_agent_stdout_captured` 失败 → stdout 被截断，或 agent 没按题面重定向
+- `test_harness_stdout_channel` 失败 → 平台没算出期望值，或 trace 缺执行记录（证据通道问题）
+- 捕获字节对上平台期望 → 沙箱 stdout 通道保住了完整输出
 
-先跑 tests（`bash scripts/check_files.sh tasks/<名> /含有output的目录`）。失败就记这题失败，不比速度。
-通过后再看 `output/timing.json` 的 `elapsed_seconds`。和 Codex 或其他 agent 对比时，只用通过的那几次。相差不到 60 秒，不判断谁更快。
+失败看 `scores.json` 的 `attribution`。通过后才比秒数，相差不到 60 秒不判谁更快。

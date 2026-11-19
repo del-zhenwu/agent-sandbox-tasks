@@ -1,61 +1,87 @@
-# sandbox-bench-tasks
+# sandbox-bench
 
-目的：通过同一个图形界面 coding agent 发题，牵引 **agent** 和 **内部沙箱** 迭代，并和 Codex 等对比。
+同时量 **agent harness + 沙箱**（网络、工具调用、文件操作）和 **agent 是否按题面完成**。一道题出两个分数，失败时能归因到某一侧。
 
-正式套件只量工具调用和文件读写（含并发执行、标准输出），不量通用解题，也不拿公网带宽题做对比。
+## 双平面
 
-对错看 `output/`，用 `tests/` 做确定性检查。通过之后才比 `timing.json` 的秒数。相差不到 60 秒，不判断谁更快。聊天文字不算结果。计时范围内不要插手下载或改文件。
+- **agent 工作区**：只放 `inputs/` 和 `output/`，agent 可见可写。这里的产物是 agent 维度证据。
+- **平台私有平面**：`runs/<题目>/<run_id>/_private/`，agent 不可见不可写。里面是每次 run 随机生成的 secret/原件、trace、平台侧期望值、健康检查记录。这里是 harness 维度证据。
+
+判据分三类，全在 `tests/test_outputs.py`：
+
+- `test_agent_*`：产物正确（文件在不在、字节/哈希/退出码对不对）
+- `test_harness_*`：平台证据（真实工具调用 trace、随机 secret 是否穿透、本地服务访问日志、原始 exec 返回包）
+- 完整性：`inputs/` 未被改（私有清单哈希比对）、`timing.json` 自洽（runner 写入，ISO 起止时间）
 
 ## 目录
 
-```text
+```
 tasks/<名字>/
-├── instruction.md     # 贴进输入框
-├── inputs/            # 拖给 agent
-├── output/            # 产物；发题人写入 timing.json
-├── judge.md           # 这题失败时通常暴露什么
-└── tests/test_outputs.py
+├── instruction.md     # 发给 agent 的题面
+├── inputs/            # 探针，发题后不可改
+├── output/            # 产物；runner 写入 timing.json
+├── judge.md           # 失败归因参考
+├── task.toml          # 元数据
+└── tests/
+    ├── test_outputs.py
+    └── inputs.sha256  # 原始 inputs 摘要（runner 会生成本次 run 的私有清单）
+
+tasks/_common.py       # 公共断言与私有证据辅助
+scripts/run_task.py    # run runner：随机注入、计时、核验、出双分数
 ```
 
-## 怎么跑
+## 运行流程
 
-1. 只把 `tasks/<名字>/inputs` 放进 agent 工作区。不要拖整个 `tasks/<名字>/`，里面的 `tests/`、`judge.md`、`instruction.md` 不能让 agent 看见。
-2. 把 `instruction.md` 全文贴进输入框（不要把该文件放进工作区），点发送并开始计时。
-3. 题目要求的文件都齐了就停表，写入 `output/timing.json`：`started_at`、`ended_at`、`elapsed_seconds`
-4. `bash scripts/check_files.sh tasks/<名字> /含有output的目录`
-5. 失败 → 按 `judge.md` 看更像 agent 问题还是沙箱问题；通过 → 才拿秒数和 Codex 对比
+```bash
+python3 scripts/run_task.py tasks/sb-env-vars --simulate          # 本地冒烟：模拟 agent 按题面执行
+python3 scripts/run_task.py tasks/sb-tool-calls --trace <CLI 导出的 trace.jsonl>
+```
 
+正式 run 由 CLI harness 导出 trace，`--trace` 传入；CLI 应在发题时记下时间并用 `--started-at` 传给 runner（否则 `--elapsed` 只覆盖核验阶段）。runner 做：准备 workspace → 生成随机 secret/原件 → 注入 → 计时 → 收产物 → 跑 `scripts/check_files.sh` → 写 `runs/<题目>/<run_id>/scores.json`。
 
-发题注意：工作区里只能有 `inputs/`。`tests/`、`judge.md`、仓库里的 `instruction.md` 文件本身都不要放进工作区；题目文字只粘贴进输入框。
+`--simulate` 只用于验证判据本身，不算真实评测。没有 trace 时 `test_harness_*` 会明确失败并提示“CLI/trace 未接入”。
 
-`sb-tool-calls` / `sb-fs-small` 若被合成一条循环命令，产物仍可能通过 tests，但用时会偏短，对比时要结合调用记录看。`sb-concurrent-exec` 用 `elapsed_seconds ≤ 90` 抓没有重叠的情况。
+核验优先用 pytest，否则回退零依赖的 `scripts/run_tests.py`，结果一致。
 
 ## 正式套件
 
-| 目录 | 量什么 | 失败时通常说明什么 |
+| 目录 | 测什么 | harness 证据 | 预算 |
+|---|---|---|---|
+| `sb-tool-calls` | 50 次独立工具调用 | trace 里 50 个唯一调用 ID + 注入 nonce | 240s |
+| `sb-concurrent-exec` | 20 条并行执行 | trace 里最大并发 ≥ 10、总跨度 ≤ 30s | 40s |
+| `sb-fs-upload` | 写随机 256 MiB 并出收据 | 平台侧随机原件哈希 | 60s |
+| `sb-stdout` | 捕获 64 MiB 标准输出 | 平台独立计算的期望哈希 | 60s |
+| `sb-env-vars` | env 经执行环境传入 | 每次 run 随机注入的 token/challenge | 30s |
+| `sb-error-handling` | 非零退出码、stderr、失败后继续 | trace 原始返回包（退出码 + stderr 分信道） | 25s |
+| `sb-net-local` | 本地 HTTP 往返 | 平台本地服务访问日志 + 随机响应体 | 30s |
+
+单轮约 485s。默认跑 3 轮约 24 分钟，控制在半小时预算内。网络维度用本地 server，不依赖公网，避免 ISP 带宽/延迟主导结果。
+
+## 归因
+
+`scores.json` 的 `attribution`：
+
+| 私有证据 | 产物 | 结论 |
 |---|---|---|
-| `sb-tool-calls` | 1000 次独立工具调用 | 调用次数不够，或单次调用往返太慢 |
-| `sb-concurrent-exec` | 80 条重叠执行（各等 5 秒） | 没重叠：`elapsed_seconds` > 90（agent 顺序发，或沙箱串行化 exec） |
-| `sb-fs-small` | 600 个小文件写入 | 丢文件、写坏 |
-| `sb-fs-upload` | 工作区写入约 1 GiB | 大文件写失败、截断 |
-| `sb-fs-download` | 大文件写完后再完整读回 | 没跑读回，或读回内容不一致 |
-| `sb-stdout` | 一次命令保住约 1 GiB 标准输出 | 标准输出被截断 |
+| 完整 | 正确 | 通过 |
+| 完整 | 错误 | agent 没做对，沙箱正常 |
+| 缺失 | 正确 | 产物伪造，或证据通道坏了 |
+| 缺失 | 错误 | harness 故障，或任务没启动 |
 
-以下仍留在目录里，**不在正式套件**，不参与 Codex 用时对比：
+区分后两格靠 `runner_health.json`：有健康检查但无事件 = 伪造；连健康检查都没有 = 证据通道故障。
 
-- `sb-cold-start`（冷启动）
-- `sb-net-rtt` / `sb-net-download` / `sb-net-upload`（公网 Cloudflare；用户 ISP 带宽会主导用时）
+## 防作弊
 
-目录名 `sb-fs-upload` / `sb-fs-download` 沿用旧名：这里分别指大文件**写**与**读回**，不是浏览器下载。
+- secret / payload / 网络响应每次 run 随机生成，题面不出现具体值，平台侧持有期望值。
+- `inputs/` 私有清单全量哈希，改探针、删探针、加文件都判失败。
+- `timing.json` 由 runner 在停表后写入并覆盖，agent 事先写的值不算数；仍做 ISO 与 ±5s 自洽校验。
+- 不再用产物 mtime 判独立调用——快 harness 会被误伤，`sleep` 又能绕过。独立性和并发只看 trace。
 
-## 和 Codex 对比时
+## 和 Codex 对比
 
-- 同一份 `instruction.md`、同一套 `tests/`
-- 只对比 tests 通过的 run
-- 用同一规则写 `timing.json`（点发送 → 文件齐）
-- 先看通过/失败和 `judge.md` 里的归因，再看秒数
+同一份 `instruction.md`、同一套 `tests/`；只对比检查通过的 run；用同一规则写 `timing.json`；相差不到 60 秒不判谁更快。分别看 agent 分和 harness 分，不要只看总分。
 
-## Playwright
+## Playwright（可选发题入口）
 
 ```bash
 npm install
@@ -63,6 +89,8 @@ npx playwright install chromium
 node gui/send-task.mjs tasks/sb-tool-calls
 ```
 
-脚本把用时写到 `runs/<题目>/output/timing.json`。再和产物一起跑 `check_files.sh`。
+脚本把用时写到 `runs/<题目>/output/timing.json`，可再交给核验。正式评测仍以 CLI runner + trace 为准。
 
-带 Docker/CLI 的一版在 `master`。
+## 改题之后
+
+改了任何 `inputs/`，都要重跑 `python3 scripts/sync_tests.py` 重建 `inputs.sha256`；runner 运行时会另建私有清单覆盖随机注入的输入。

@@ -2,8 +2,10 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .tbench-testing/
+.workbuddy-ai/
 node_modules/
 gui/config.json
 runs/
 o
 */output/
+!*/output/.gitkeep

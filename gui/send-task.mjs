@@ -6,7 +6,7 @@ import readline from "node:readline";
 const taskDir = path.resolve(process.argv[2] || "");
 const configPath = path.resolve(process.argv[3] || "gui/config.json");
 const instructionPath = path.join(taskDir, "instruction.md");
-const probePath = path.join(taskDir, "inputs", "probe.py");
+const inputsDir = path.join(taskDir, "inputs");
 
 if (!fs.existsSync(instructionPath)) {
   console.error("用法: node gui/send-task.mjs tasks/sb-tool-calls");
@@ -23,18 +23,30 @@ const taskName = path.basename(taskDir);
 const runDir = path.resolve("runs", taskName, "output");
 fs.mkdirSync(runDir, { recursive: true });
 
+// Collect all input files
+const inputFiles = [];
+if (fs.existsSync(inputsDir) && fs.statSync(inputsDir).isDirectory()) {
+  for (const f of fs.readdirSync(inputsDir)) {
+    const fullPath = path.join(inputsDir, f);
+    if (fs.statSync(fullPath).isFile()) {
+      inputFiles.push(fullPath);
+    }
+  }
+}
+
 const browser = await chromium.launch({ headless: false });
 const page = await browser.newPage();
 await page.goto(config.url);
 
-if (config.fileSelector && fs.existsSync(probePath)) {
-  await page.setInputFiles(config.fileSelector, probePath);
+// Upload all input files, not just probe.py
+if (config.fileSelector && inputFiles.length > 0) {
+  await page.setInputFiles(config.fileSelector, inputFiles);
 }
 await page.fill(config.inputSelector, instruction);
 
 const startedAt = new Date();
 await page.click(config.sendSelector);
-console.log(`已发送 ${taskName}。开始时间 ${startedAt.toISOString()}`);
+console.log(`已发送 ${taskName}（${inputFiles.length} 个输入文件）。开始时间 ${startedAt.toISOString()}`);
 
 let endedAt;
 if (config.doneSelector) {
